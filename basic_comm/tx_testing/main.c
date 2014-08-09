@@ -19,6 +19,8 @@ int main(void)
     uint8_t W_buffer[32];
     
     init_nrf_SPI();
+    init_nrf_led_debug();
+    init_nrf_INT0_IRQ();
     init_nrf();
     
     LED_DEBUG_PORT &= ~LED_DEBUG_BIT;

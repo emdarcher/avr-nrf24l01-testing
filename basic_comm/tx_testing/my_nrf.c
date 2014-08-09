@@ -33,7 +33,7 @@ uint8_t write_read_byte_nrf_SPI(uint8_t cData){
         USISR |= (1<<USIOIF); //clear flag to be able to recieve new data
         
         //wait for complete transmission
-        while(!(USISR & (1<<USIOIF)) ){
+        while((USISR & (1<<USIOIF))==0 ){
             USICR |= (1<<USITC);  //Toggle SCK and count 4bit cnt 0-15,
                                     //USIOIF will be set when it overflows
         }
@@ -61,7 +61,7 @@ void write_to_nrf(uint8_t reg, uint8_t Package){
     _delay_us(10); //make sure last cmd was a bit ago
     RF_CTRL_PORT &= ~(RF_CSN); //CSN low, nrf listening
     _delay_us(10);
-    write_read_byte_nrf_SPI(R_REGISTER + reg); //R_Register,  set nrf to read mode
+    write_read_byte_nrf_SPI(W_REGISTER + reg); //R_Register,  set nrf to read mode
                                                 //'reg' will be read back
     _delay_us(10);
     write_read_byte_nrf_SPI(Package); //send package to be written to "reg"
@@ -73,7 +73,7 @@ uint8_t *rw_nrf(uint8_t ReadWrite, uint8_t reg, uint8_t *val, uint8_t antVal){
     
     //READ_BIT or WRITE_BIT, reg register, val package array, # ints in package
     
-    if(ReadWrite){
+    if(ReadWrite==WRITE_BIT){
     //if WRITE_BIT=1, then we write, other wise nothin' b/c READ_BIT=0
         reg = W_REGISTER + reg; //add write bit to reg
     }
@@ -106,11 +106,11 @@ uint8_t *rw_nrf(uint8_t ReadWrite, uint8_t reg, uint8_t *val, uint8_t antVal){
 void init_nrf(void){
     
     #if USING_INT0_IRQ==1
-    init_nrf_INT0_IRQ();
+    //init_nrf_INT0_IRQ();
     #endif
     
     #if USING_LED_DEBUG==1
-    init_nrf_led_debug();
+    //init_nrf_led_debug();
     #endif
     
     _delay_ms(100); //allow to reach power down if shut down
@@ -148,7 +148,8 @@ void init_nrf(void){
     rw_nrf(WRITE_BIT,RF_SETUP, val,1);
     
     //RX RF_Address setup 
-    memcpy(val, "\xDE\xAD\xBE\xEF\x00", 5);
+    //memcpy(val, "\xDE\xAD\xBE\xEF\x00", 5);
+    val[0]=0xDE;val[1]=0xAD;val[2]=0xBE;val[3]=0xEF;val[4]=0x00;
     rw_nrf(WRITE_BIT,RX_ADDR_P0,val,5); //pipe #0 address
     //set TX Address same in this setup.
     rw_nrf(WRITE_BIT,TX_ADDR, val,5);
@@ -172,9 +173,7 @@ void init_nrf(void){
     
     //CONFIG reg setup = boot nrf and choose rx or tx
     //set as tx, pwr up, and irq not triggered by transmittion failure
-    val[0]=((1<<MASK_MAX_RT)|
-                                                (1<<EN_CRC) |
-                                                (1<<PWR_UP));
+    val[0]=((1<<MASK_MAX_RT)|(1<<EN_CRC) |(1<<PWR_UP));
     rw_nrf(WRITE_BIT, CONFIG, val, 1);
                                                 
     //device needs 1.5ms delay to reach standby mode (CE=low)
@@ -281,7 +280,6 @@ ISR(INT0_vect)
     //data=rw_nrf(R,R_RX_PAYLOAD,data,sizeof(data)); //read out rx msg
     
     reset_nrf(); //reset for further comm
-    
     
     sei(); //enable global interrupts
 }
