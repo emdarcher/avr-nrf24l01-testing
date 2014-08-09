@@ -5,6 +5,8 @@
 #ifndef MY_NRF_H
 #define MY_NRF_H
 
+#include <string.h>
+
 #define RF_CTRL_DDR DDRB
 #define RF_CTRL_PORT PORTB
 #define RF_CSN  (1<<4)

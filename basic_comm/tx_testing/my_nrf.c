@@ -103,7 +103,58 @@ uint8_t *rw_nrf(uint8_t ReadWrite, uint8_t reg, uint8_t *val, uint8_t antVal){
 }
 void init_nrf(void){
     
+    _delay_ms(100); //allow to reach power down if shut down
     
+    uint8_t val[5]; //array of ints to send to *rw_nrf function
+    
+    //enable auto-ack, EN_AA
+    //only works with identical addresses on transmitter and receiver
+    //WRITE_BIT (write mode_, EN_AA reg, val 1, 1= len of data ints
+    write_read_byte_nrf_SPI(WRITE_BIT,EN_AA, 0x01, 1); 
+    
+    //setup num of retries and delay
+    //0b0010 1111 "2" sets 750uS delay between retries,
+    //"F" is num retries, (1-15 now 15)
+    write_read_byte_nrf_SPI(WRITE_BIT,SETUP_RETR, 0x2F, 1);
+    
+    //choose num of data pipes (1-5)
+    write_read_byte_nrf_SPI(WRITE_BIT, EN_RXADDR, 0x01, 1); //EN pipe #0
+    
+    //RF_Address width setup (setup here as 5)
+    write_read_byte_nrf_SPI(WRITE_BIT,SETUP_AW,0b00000011,1);
+    
+    //RF channel setup, choose freq, 2.4 - 2.527 GHz 1MHz/step
+    //setup as 120
+    write_read_byte_nrf_SPI(WRITE_BIT,RF_CH,120,1);
+    
+    //RF setup - choose pwr and data rate 
+    //setup here for 250kbps and 0dBm pwr
+    write_read_byte_nrf_SPI(WRITE_BIT,RF_SETUP, ((1<<RF_DR_LOW)|0x03),1);
+    
+    //RX RF_Address setup 
+    memcpy(val, "\xDE\xAD\xBE\xEF\x00", 5);
+    write_read_byte_nrf_SPI(WRITE_BIT,RX_ADDR_P0,val,5); //pipe #0 address
+    //set TX Address same in this setup.
+    write_read_byte_nrf_SPI(WRITE_BIT,TX_ADDR, val,5);
+    
+    
+    //Payload width
+    //write_read_byte_nrf_SPI(WRITE_BIT,RX_PW_P0, 5,1);
+    
+    //set for dynamic payload allocation/width whatever, stuff
+    //enable it on pipe #0
+    write_read_byte_nrf_SPI(WRITE_BIT, DYNPD, (1<<DPL_P0), 1);
+    //and enable it globally
+    write_read_byte_nrf_SPI(WRITE_BIT, FEATURE, (1<<EN_DPL),1);
+    
+    //CONFIG reg setup = boot nrf and choose rx or tx
+    //set as tx, pwr up, and irq not triggered by transmittion failure
+    write_read_byte_nrf_SPI(WRITE_BIT, CONFIG, ((1<<MASK_MAX_RT)|
+                                                (1<<EN_CRC) |
+                                                (1<<PWR_UP)), 1);
+                                                
+    //device needs 1.5ms delay to reach standby mode (CE=low)
+    _delay_ms(100); //why 100ms?
     
 }
 void transmit_nrf_payload(uint8_t * W_buff){
