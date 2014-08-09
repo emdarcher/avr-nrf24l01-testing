@@ -9,6 +9,10 @@
 #include <avr/interrupt.h>
 #include "nRF24L01.h"
 #include <util/delay.h>
+#include <stdio.h>
+#include <avr/io.h>
+
+
 
 #define RF_CTRL_DDR DDRB
 #define RF_CTRL_PORT PORTB

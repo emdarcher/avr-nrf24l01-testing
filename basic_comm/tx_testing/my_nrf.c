@@ -155,15 +155,20 @@ void init_nrf(void){
     
     
     //Payload width
-    //write_read_byte_nrf_SPI(WRITE_BIT,RX_PW_P0, 5,1);
+    //rw_nrf(WRITE_BIT,RX_PW_P0, 3,1);
     
     //set for dynamic payload allocation/width whatever, stuff
     //enable it on pipe #0
+    //val[0]=(1<<DPL_P0);
+    //rw_nrf(WRITE_BIT, DYNPD, val, 1);
+    //and enable it globally, and dynamic ack (ability for noack)
+    val[0]=((1<<EN_DPL)|(1<<EN_DYN_ACK));
+    rw_nrf(WRITE_BIT, FEATURE, val,1);
+    //enable it on pipe #0
     val[0]=(1<<DPL_P0);
     rw_nrf(WRITE_BIT, DYNPD, val, 1);
-    //and enable it globally
-    val[0]=(1<<EN_DPL);
-    rw_nrf(WRITE_BIT, FEATURE, val,1);
+    
+    
     
     //CONFIG reg setup = boot nrf and choose rx or tx
     //set as tx, pwr up, and irq not triggered by transmittion failure
