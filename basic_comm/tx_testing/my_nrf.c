@@ -2,12 +2,14 @@
 
 #include "my_nrf.h"
 
+volatile uint8_t *data; //for interrupt stuff
+
 void init_nrf_SPI(void){
     
     #ifdef USING_ATTINY26
         
         RF_CTRL_DDR |= (RF_CE | RF_CSN); //setup CE and CSN as outputs
-        DDRB |= ((1<<PB1)|(1<<PB2))//set the USI DO and SCK pins as output
+        DDRB |= ((1<<PB1)|(1<<PB2));//set the USI DO and SCK pins as output
         
         DDRB &= ~(1<<PB0); //set USI DI for input
         PORTB |= (1<<PB0); //is this pullup needed???
@@ -31,7 +33,7 @@ uint8_t write_read_byte_nrf_SPI(uint8_t cData){
         USISR |= (1<<USIOIF); //clear flag to be able to recieve new data
         
         //wait for complete transmission
-        while(!(USISI & (1<<USIOIF)) ){
+        while(!(USISR & (1<<USIOIF)) ){
             USICR |= (1<<USITC);  //Toggle SCK and count 4bit cnt 0-15,
                                     //USIOIF will be set when it overflows
         }
@@ -86,7 +88,7 @@ uint8_t *rw_nrf(uint8_t ReadWrite, uint8_t reg, uint8_t *val, uint8_t antVal){
     write_read_byte_nrf_SPI(reg); //set nrf to read or write mode 
     _delay_us(10);
     
-    int i
+    int i;
     for(i=0;i<antVal;i++){
         if((!(ReadWrite)) && (reg != W_TX_PAYLOAD)){ //want to read?
                                                     //you can't add write bit.
@@ -107,6 +109,10 @@ void init_nrf(void){
     init_nrf_INT0_IRQ();
     #endif
     
+    #if USING_LED_DEBUG==1
+    init_nrf_led_debug();
+    #endif
+    
     _delay_ms(100); //allow to reach power down if shut down
     
     uint8_t val[5]; //array of ints to send to *rw_nrf function
@@ -114,26 +120,32 @@ void init_nrf(void){
     //enable auto-ack, EN_AA
     //only works with identical addresses on transmitter and receiver
     //WRITE_BIT (write mode_, EN_AA reg, val 1, 1= len of data ints
-    rw_nrf(WRITE_BIT,EN_AA, 0x01, 1); 
+    val[0]=0x01;
+    rw_nrf(WRITE_BIT,EN_AA, val, 1); 
     
     //setup num of retries and delay
     //0b0010 1111 "2" sets 750uS delay between retries,
     //"F" is num retries, (1-15 now 15)
-    rw_nrf(WRITE_BIT,SETUP_RETR, 0x2F, 1);
+    val[0]=0x2F;
+    rw_nrf(WRITE_BIT,SETUP_RETR, val, 1);
     
     //choose num of data pipes (1-5)
-    rw_nrf(WRITE_BIT, EN_RXADDR, 0x01, 1); //EN pipe #0
+    val[0]=0x01;
+    rw_nrf(WRITE_BIT, EN_RXADDR, val, 1); //EN pipe #0
     
     //RF_Address width setup (setup here as 5)
-    rw_nrf(WRITE_BIT,SETUP_AW,0b00000011,1);
+    val[0]=0b00000011;
+    rw_nrf(WRITE_BIT,SETUP_AW,val,1);
     
     //RF channel setup, choose freq, 2.4 - 2.527 GHz 1MHz/step
     //setup as 120
-    rw_nrf(WRITE_BIT,RF_CH,120,1);
+    val[0]=120;
+    rw_nrf(WRITE_BIT,RF_CH,val,1);
     
     //RF setup - choose pwr and data rate 
     //setup here for 250kbps and 0dBm pwr
-    rw_nrf(WRITE_BIT,RF_SETUP, ((1<<RF_DR_LOW)|0x03),1);
+    val[0] = ((1<<RF_DR_LOW)|0x03);
+    rw_nrf(WRITE_BIT,RF_SETUP, val,1);
     
     //RX RF_Address setup 
     memcpy(val, "\xDE\xAD\xBE\xEF\x00", 5);
@@ -147,18 +159,25 @@ void init_nrf(void){
     
     //set for dynamic payload allocation/width whatever, stuff
     //enable it on pipe #0
-    rw_nrf(WRITE_BIT, DYNPD, (1<<DPL_P0), 1);
+    val[0]=(1<<DPL_P0);
+    rw_nrf(WRITE_BIT, DYNPD, val, 1);
     //and enable it globally
-    rw_nrf(WRITE_BIT, FEATURE, (1<<EN_DPL),1);
+    val[0]=(1<<EN_DPL);
+    rw_nrf(WRITE_BIT, FEATURE, val,1);
     
     //CONFIG reg setup = boot nrf and choose rx or tx
     //set as tx, pwr up, and irq not triggered by transmittion failure
-    rw_nrf(WRITE_BIT, CONFIG, ((1<<MASK_MAX_RT)|
+    val[0]=((1<<MASK_MAX_RT)|
                                                 (1<<EN_CRC) |
-                                                (1<<PWR_UP)), 1);
+                                                (1<<PWR_UP));
+    rw_nrf(WRITE_BIT, CONFIG, val, 1);
                                                 
     //device needs 1.5ms delay to reach standby mode (CE=low)
     _delay_ms(100); //why 100ms?
+    
+    #if USING_INT0_IRQ==1
+    sei();//enable interrupts
+    #endif
     
 }
 void transmit_nrf_payload(uint8_t * W_buff){
@@ -207,6 +226,16 @@ void reset_nrf(void){
     
 }
 
+void init_nrf_led_debug(void){
+    
+    //setup output
+    LED_DEBUG_DDR |= LED_DEBUG_BIT;
+    
+    //set high for off
+    LED_DEBUG_PORT |= LED_DEBUG_BIT;
+    
+}
+
 void init_nrf_INT0_IRQ(void){
     
     #ifdef USING_ATTINY26
@@ -223,3 +252,34 @@ void init_nrf_INT0_IRQ(void){
     #endif
     
 }
+
+
+#if USING_INT0_IRQ==1
+//ISR for stuff
+
+//triggered when tx succed or rx recieved data
+ISR(INT0_vect)
+{
+    //Mask_Max_rt in config reg has to be set to stop from trigger on failed tx
+    
+    cli(); //disable global interrupts
+    RF_CTRL_PORT &= ~(RF_CE); //CE low, stop sending/listening
+    
+    
+    #if USING_LED_DEBUG==1
+    LED_DEBUG_PORT &= ~LED_DEBUG_BIT; //low for on
+    _delay_ms(500);
+    LED_DEBUG_PORT |= LED_DEBUG_BIT; //high for off
+    #endif
+    
+    //uncomment below if being a reciever
+    //data=rw_nrf(R,R_RX_PAYLOAD,data,sizeof(data)); //read out rx msg
+    
+    reset_nrf(); //reset for further comm
+    
+    
+    sei(); //enable global interrupts
+}
+
+
+#endif

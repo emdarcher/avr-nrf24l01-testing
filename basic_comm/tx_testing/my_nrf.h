@@ -6,12 +6,21 @@
 #define MY_NRF_H
 
 #include <string.h>
+#include <avr/interrupt.h>
+#include "nRF24L01.h"
+#include <util/delay.h>
 
 #define RF_CTRL_DDR DDRB
 #define RF_CTRL_PORT PORTB
 #define RF_CSN  (1<<4)
 #define RF_CE   (1<<5)
 #define RF_IRQ  (1<<6)
+
+#define USING_LED_DEBUG 1
+
+#define LED_DEBUG_DDR DDRB
+#define LED_DEBUG_PORT PORTB
+#define LED_DEBUG_BIT (1<<3);
 
 #define WRITE_BIT 1
 #define READ_BIT 0
@@ -21,6 +30,8 @@
 //#define USING_ATMEGAxx8
 
 #define USING_INT0_IRQ 1
+
+extern volatile uint8_t *data; //for interrupt
 
 //prototypes
 
@@ -36,5 +47,6 @@ void reset_nrf(void);
 
 void init_nrf_INT0_IRQ(void);
 
+void init_nrf_led_debug(void);
 
 #endif
