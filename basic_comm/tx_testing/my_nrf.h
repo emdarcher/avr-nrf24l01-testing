@@ -5,14 +5,14 @@
 #ifndef MY_NRF_H
 #define MY_NRF_H
 
-#define RF_CTRL_DDR
-#define RF_CTRL_PORT
+#define RF_CTRL_DDR DDRB
+#define RF_CTRL_PORT PORTB
 #define RF_CSN  (1<<4)
 #define RF_CE   (1<<5)
 #define RF_IRQ  (1<<6)
 
-#define W 1
-#define R 0
+#define WRITE_BIT 1
+#define READ_BIT 0
 
 #define USING_ATTINY26
 //#define USING_ATTINYx5
@@ -23,7 +23,7 @@
 //prototypes
 
 void init_nrf_SPI(void);
-void write_byte_nrf_SPI(uint8_t cData);
+uint8_t write_read_byte_nrf_SPI(uint8_t cData);
 uint8_t get_nrf_reg(uint8_t reg);
 void write_to_nrf(uint8_t reg, uint8_t Package);
 uint8_t *rw_nrf(uint8_t ReadWrite, uint8_t reg, uint8_t *val, uint8_t antVal);
