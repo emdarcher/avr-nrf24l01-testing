@@ -60,6 +60,19 @@ void mirf_init()
     PCICR  = (1<<PCIE2);
 #endif // __AVR_ATmega168__    
 
+#ifdef USING_ATTINY26
+        
+        DDRB &= ~(1<<DDB6); //external interrupt int0, make sure it's input
+        
+        MCUCR |= (1<<ISC01); //into falling edge pb6
+        MCUCR &= ~(1<<ISC00); //falling edge stuff
+        
+        GIMSK |= (1<<INT0); //enable INT0 interrupt
+        
+        //sei(); //enable global interrupts, should do later
+        
+    #endif
+
     // Initialize spi module
     spi_init();
 }
@@ -101,6 +114,9 @@ SIGNAL(SIG_INTERRUPT0)
 #if defined(__AVR_ATmega168__)
 SIGNAL(SIG_PIN_CHANGE2) 
 #endif // __AVR_ATmega168__  
+#if defined(__AVR_ATtiny26__)
+ISR(INT0_vect)
+#endif //attiny26
 // Interrupt handler 
 {
     uint8_t status;   

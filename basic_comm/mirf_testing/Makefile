@@ -16,7 +16,9 @@ MAIN = main.c
 ## If you've split your program into multiple files, 
 ## include the additional .c source (in same directory) here 
 ## (and include the .h files in your foo.c)
-LOCAL_SOURCE = my_nrf.c
+LOCAL_SOURCE = spi.c
+LOCAL_SOURCE += mirf.c
+#LOCAL_SOURCE = my_nrf.c
 #LOCAL_SOURCE = ht1632c.c
 #LOCAL_SOURCE += seven_segs.c
 

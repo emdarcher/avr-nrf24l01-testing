@@ -30,13 +30,25 @@
 #include <avr/io.h>
 
 // Mirf settings
-#define mirf_CH         2
+//#define mirf_CH         2
+#define mirf_CH         120
 #define mirf_PAYLOAD    16
-#define mirf_CONFIG     ( (1<<MASK_RX_DR) | (1<<EN_CRC) | (0<<CRCO) )
+#define mirf_CONFIG     ( (1<<MASK_RX_DR) | (1<<EN_CRC) | (0<<CRCO) | \
+                        /*(1<<MASK_MAX_RT) \*/
+                        )
+
 
 // Pin definitions for chip select and chip enabled of the MiRF module
-#define CE  PB0
-#define CSN PB1
+
+#if defined(__AVR_ATmega8__) || defined(__AVR_ATmega168__)
+    #define CE  PB0
+    #define CSN PB1
+#endif
+#if defined(__AVR_ATtiny26__)
+#   define CE   PB5
+#   define CSN  PB4
+#endif
+
 
 // Definitions for selecting and enabling MiRF module
 #define mirf_CSN_hi     PORTB |=  (1<<CSN);

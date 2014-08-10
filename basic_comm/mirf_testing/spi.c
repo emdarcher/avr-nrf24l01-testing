@@ -29,17 +29,32 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+#if defined(__AVR_ATmega8__) || defined(__AVR_ATmega168__)
 #define PORT_SPI    PORTB
 #define DDR_SPI     DDRB
 #define DD_MISO     DDB4
 #define DD_MOSI     DDB3
 #define DD_SS       DDB2
 #define DD_SCK      DDB5
+#endif
+
+#if defined(__AVR_ATtiny26__)
+
+#define PORT_SPI PORTB
+#define DDR_SPI DDRB
+#define DD_MISO DDB0
+#define DD_MOSI DDB1
+#define DD_SS   DDB4
+#define DD_SCK  DDB2
+
+#endif
+
 
 
 void spi_init()
 // Initialize pins for spi communication
 {
+    #if defined(__AVR_ATmega8__) || defined(__AVR_ATmega168__)
     DDR_SPI &= ~((1<<DD_MOSI)|(1<<DD_MISO)|(1<<DD_SS)|(1<<DD_SCK));
     // Define the following pins as output
     DDR_SPI |= ((1<<DD_MOSI)|(1<<DD_SS)|(1<<DD_SCK));
@@ -54,6 +69,29 @@ void spi_init()
             (0<<CPHA));             // Clock Phase (0:leading / 1:trailing edge sampling)
 
     SPSR = (1<<SPI2X);              // Double Clock Rate
+    #endif
+    
+    #if defined(__AVR_ATtiny26__)
+    
+    //#ifdef USING_ATTINY26
+        
+        //RF_CTRL_DDR |= (RF_CE | RF_CSN); //setup CE and CSN as outputs
+        
+        DDRB |= ((1<<PB1)|(1<<PB2));//set the USI DO and SCK pins as output
+        
+        DDRB &= ~(1<<PB0); //set USI DI for input
+        PORTB |= (1<<PB0); //is this pullup needed???
+        
+        //USI stuff
+        USICR |= ((1<<USIWM0)|(1<<USICS1)|(1<<USICLK));
+        
+        //RF_CTRL_PORT |= (RF_CSN); //set CSN high
+        //RF_CTRL_PORT &= ~(RF_CE); //set CE LOW
+        
+    //#endif
+    
+    #endif
+    
     
 }
 
@@ -62,9 +100,24 @@ void spi_transfer_sync (uint8_t * dataout, uint8_t * datain, uint8_t len)
 {
        uint8_t i;      
        for (i = 0; i < len; i++) {
+             #if defined(__AVR_ATmega8__) || defined(__AVR_ATmega168__)
              SPDR = dataout[i];
              while((SPSR & (1<<SPIF))==0);
              datain[i] = SPDR;
+             #endif
+             
+            #if defined(__AVR_ATtiny26__)
+            //USIDR = cData;
+            USIDR = dataout[i];
+            USISR |= (1<<USIOIF); //clear flag to be able to recieve new data
+        
+            //wait for complete transmission
+            while((USISR & (1<<USIOIF))==0 ){
+                USICR |= (1<<USITC);  //Toggle SCK and count 4bit cnt 0-15,
+                                    //USIOIF will be set when it overflows
+            }
+            datain[i] = USIDR;
+            #endif
        }
 }
 
@@ -73,16 +126,42 @@ void spi_transmit_sync (uint8_t * dataout, uint8_t len)
 {
        uint8_t i;      
        for (i = 0; i < len; i++) {
+            #if defined(__AVR_ATmega8__) || defined(__AVR_ATmega168__)
              SPDR = dataout[i];
              while((SPSR & (1<<SPIF))==0);
+            #endif
+            
+            #if defined(__AVR_ATtiny26__)
+            USIDR = dataout[i];
+            USISR |= (1<<USIOIF); //clear flag to be able to recieve new data
+            //wait for complete transmission
+            while((USISR & (1<<USIOIF))==0 ){
+                USICR |= (1<<USITC);  //Toggle SCK and count 4bit cnt 0-15,
+                                    //USIOIF will be set when it overflows
+            }
+            
+            #endif
        }
 }
 
 uint8_t spi_fast_shift (uint8_t data)
 // Clocks only one byte to target device and returns the received one
 {
+    #if defined(__AVR_ATmega8__) || defined(__AVR_ATmega168__)
     SPDR = data;
     while((SPSR & (1<<SPIF))==0);
     return SPDR;
+    #endif
+    
+    #if defined(__AVR_ATtiny26__)
+    USIDR = data;
+            USISR |= (1<<USIOIF); //clear flag to be able to recieve new data
+            //wait for complete transmission
+            while((USISR & (1<<USIOIF))==0 ){
+                USICR |= (1<<USITC);  //Toggle SCK and count 4bit cnt 0-15,
+                                    //USIOIF will be set when it overflows
+            }
+            return USIDR;
+    #endif
 }
 
