@@ -32,11 +32,12 @@
 // Mirf settings
 //#define mirf_CH         2
 #define mirf_CH         120
-#define mirf_PAYLOAD    16
-#define mirf_CONFIG     ( (1<<MASK_RX_DR) | (1<<EN_CRC) | (0<<CRCO) | \
-                        /*(1<<MASK_MAX_RT) \*/
+#define mirf_PAYLOAD    3
+#define mirf_CONFIG     ( (1<<MASK_RX_DR) | (1<<EN_CRC) | (0<<CRCO)  \
+                        /* | (1<<MASK_MAX_RT) \*/  \
                         )
 
+#define mirf_SETUP      ( (1<<RF_DR_LOW) | (0<<RF_DR_HIGH) | (1<<RF_PWR_HIGH) | (1<<RF_PWR_LOW) )
 
 // Pin definitions for chip select and chip enabled of the MiRF module
 
@@ -48,6 +49,7 @@
 #   define CE   PB5
 #   define CSN  PB4
 #endif
+
 
 
 // Definitions for selecting and enabling MiRF module

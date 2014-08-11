@@ -144,7 +144,7 @@ void init_nrf(void){
     
     //RF setup - choose pwr and data rate 
     //setup here for 250kbps and 0dBm pwr
-    val[0] = ((1<<RF_DR_LOW)|0x03);
+    val[0] = ((1<<RF_DR_LOW)|0x06);
     rw_nrf(WRITE_BIT,RF_SETUP, val,1);
     
     //RX RF_Address setup 
@@ -156,7 +156,8 @@ void init_nrf(void){
     
     
     //Payload width
-    //rw_nrf(WRITE_BIT,RX_PW_P0, 3,1);
+    val[0]=0x03;
+    rw_nrf(WRITE_BIT,RX_PW_P0, val,1);
     
     //set for dynamic payload allocation/width whatever, stuff
     //enable it on pipe #0
@@ -241,7 +242,7 @@ void init_nrf_led_debug(void){
 }
 
 void init_nrf_INT0_IRQ(void){
-    
+    #if USING_INT0_IRQ==1
     #ifdef USING_ATTINY26
         
         DDRB &= ~(1<<DDB6); //external interrupt int0, make sure it's input
@@ -254,7 +255,7 @@ void init_nrf_INT0_IRQ(void){
         //sei(); //enable global interrupts, should do later
         
     #endif
-    
+    #endif
 }
 
 
@@ -272,7 +273,7 @@ ISR(INT0_vect)
     
     #if USING_LED_DEBUG==1
     LED_DEBUG_PORT &= ~LED_DEBUG_BIT; //low for on
-    _delay_ms(500);
+    _delay_ms(100);
     LED_DEBUG_PORT |= LED_DEBUG_BIT; //high for off
     #endif
     

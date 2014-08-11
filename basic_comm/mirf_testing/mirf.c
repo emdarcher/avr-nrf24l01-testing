@@ -31,8 +31,8 @@
 #include <avr/interrupt.h>
 
 // Defines for setting the MiRF registers for transmitting or receiving mode
-#define TX_POWERUP mirf_config_register(CONFIG, mirf_CONFIG | ( (1<<PWR_UP) | (0<<PRIM_RX) ) )
-#define RX_POWERUP mirf_config_register(CONFIG, mirf_CONFIG | ( (1<<PWR_UP) | (1<<PRIM_RX) ) )
+#define TX_POWERUP (mirf_config_register(CONFIG, mirf_CONFIG | ( (1<<PWR_UP) | (0<<PRIM_RX) ) ))
+#define RX_POWERUP (mirf_config_register(CONFIG, mirf_CONFIG | ( (1<<PWR_UP) | (1<<PRIM_RX) ) ))
 
 
 // Flag which denotes transmitting mode
@@ -84,7 +84,10 @@ void mirf_config()
 {
     // Set RF channel
     mirf_config_register(RF_CH,mirf_CH);
-
+    
+    //set pwr
+    mirf_config_register(RF_SETUP, mirf_SETUP);
+    
     // Set length of incoming payload 
     mirf_config_register(RX_PW_P0, mirf_PAYLOAD);
 
